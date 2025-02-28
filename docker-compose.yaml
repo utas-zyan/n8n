@@ -1,0 +1,46 @@
+version: "3.7"
+
+services:
+  tunnel:
+    image: cloudflare/cloudflared
+    env_file: .env
+    container_name: n8n-tunnel
+    command:
+      - tunnel
+      - --no-autoupdate
+      - run
+      - --token
+      - ${TUNNEL_TOKEN}
+    logging:
+      options:
+        max-size: "1m"
+        max-file: "1"
+    networks:
+      - n8n-net
+    extra_hosts:
+    - "host.docker.internal:host-gateway"
+  n8n:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: n8n
+    restart: always
+    env_file: .env
+    ports:
+      - "127.0.0.1:5678:5678"
+    environment:
+      - N8N_HOST=${DOMAIN_NAME}
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=https
+      - NODE_ENV=production
+      - WEBHOOK_URL=https://${DOMAIN_NAME}/
+      - GENERIC_TIMEZONE=Australia/Sydney
+    user: root
+    networks:
+      - n8n-net
+    volumes:
+      - ./n8n_data:/home/node/.n8n
+      - ./n8n-local-files:/files
+networks:
+  n8n-net:
+    driver: bridge
